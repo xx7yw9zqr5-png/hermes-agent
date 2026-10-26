@@ -626,6 +626,30 @@ def _pool_error_context(agent, classified: Any, error_context: Any) -> Any:
             **_usage_window_reset_context(agent)}
 
 
+def _is_upstream_aggregator_billing(api_error: Exception) -> bool:
+    """Detect upstream/model-specific billing on aggregator proxies (e.g., OpenRouter via 9router).
+    These errors mention the upstream provider/model in brackets like [openrouter/...] and
+    indicate model quota exhaustion, not credential exhaustion. Credential rotation won't help."""
+    msg = str(api_error).lower()
+    # Common aggregator upstream patterns in error messages
+    upstream_patterns = (
+        "[openrouter/",
+        "[anthropic/",
+        "[openai/",
+        "[google/",
+        "[mistral/",
+        "[cohere/",
+        "[ai21/",
+        "[meta-llama/",
+        "[nvidia/",
+        "[together/",
+        "[fireworks/",
+        "[replicate/",
+        "[perplexity/",
+    )
+    return any(p in msg for p in upstream_patterns)
+
+
 def _usage_window_reset_context(agent) -> dict[str, float]:
     """``{"reset_at": epoch s}`` for a usage-window 402: when the refused allowance frees up, from the usage
     headers the 402 carried (the API's error body has no reset). Empty when the state names none, so the
@@ -687,13 +711,21 @@ def recover_after_classification(
             _vlines(agent, "🔐 Nous paid access verified — refreshed runtime credentials and retrying request...")
             return True, False
 
-    recovered_with_pool, _retry.has_retried_429 = agent._recover_with_credential_pool(
-        status_code=status_code, has_retried_429=_retry.has_retried_429,
-        classified_reason=classified.reason, error_context=_pool_error_context(agent, classified, error_context),
-        billing_unverified=classified.billing_unverified,
+    # Skip credential pool rotation for upstream/model-specific billing on aggregators
+    # (e.g., OpenRouter 402 "requires more credits" — the limit is on the model, not the proxy credential).
+    _skip_pool_for_billing = (
+        classified.reason == FailoverReason.billing
+        and _is_upstream_aggregator_billing(api_error)
     )
-    if recovered_with_pool:
-        return True, recovered_with_pool
+    recovered_with_pool = False
+    if not _skip_pool_for_billing:
+        recovered_with_pool, _retry.has_retried_429 = agent._recover_with_credential_pool(
+            status_code=status_code, has_retried_429=_retry.has_retried_429,
+            classified_reason=classified.reason, error_context=_pool_error_context(agent, classified, error_context),
+            billing_unverified=classified.billing_unverified,
+        )
+        if recovered_with_pool:
+            return True, recovered_with_pool
 
     # Shrink oversized native image parts in-place and retry once.
     if classified.reason == FailoverReason.image_too_large and not _retry.image_shrink_retry_attempted:
@@ -702,7 +734,7 @@ def recover_after_classification(
             api_messages, max_dimension=_image_error_max_dimension(api_error) or 8000
         ):
             _vlines(agent, "📐 Image(s) exceeded provider size limit — shrank and retrying...")
-            return True, recovered_with_pool
+            return True, False
         logger.info(
             "image-shrink recovery: no data-URL image parts found "
             "or shrink didn't reduce size; surfacing original error."
@@ -1732,6 +1764,8 @@ def _cap_long_context_tier(agent: Any) -> int:
 
 def _eager_fallback_status(classified: Any, is_upstream: bool, is_transport_failure: bool) -> str:
     """Status line announcing an eager fallback switch."""
+    if (classified.error_context or {}).get("upstream_quota_503"):
+        return "⚠️ HTTP 503 with upstream quota/credit error — switching to fallback provider..."
     if is_upstream:
         _upstream_name = (classified.error_context or {}).get("upstream_provider", "aggregator")
         return f"⚠️ Upstream {_upstream_name} rate-limited — switching to fallback model..."
@@ -1933,12 +1967,13 @@ def route_classified_error(
         or (_is_transport_failure and retry_count >= 2)
     ) and not (getattr(classified, "error_context", None) or {}).get("usage_window")  # never switch models on a plan limit
     if _should_fallback and agent._fallback_index < len(agent._fallback_chain):
-        # No eager fallback while credential pool rotation may recover. Exception: an
-        # upstream-aggregator 429 — the pool can't help, always fall back.
-        # Fixes #11314.
+        # No eager fallback while credential pool rotation may recover. Exceptions:
+        # - upstream-aggregator 429 — the pool can't help, always fall back. Fixes #11314.
+        # - billing/quota errors — model-specific, credential rotation won't help.
         _is_upstream = classified.reason == FailoverReason.upstream_rate_limit
+        _is_billing = classified.reason == FailoverReason.billing
         pool_may_recover = (
-            False if _is_upstream else _ra()._pool_may_recover_from_rate_limit(agent._credential_pool)
+            False if (_is_upstream or _is_billing) else _ra()._pool_may_recover_from_rate_limit(agent._credential_pool)
         )
         if not pool_may_recover:
             agent._buffer_diagnostic_status(_eager_fallback_status(classified, _is_upstream, _is_transport_failure))
