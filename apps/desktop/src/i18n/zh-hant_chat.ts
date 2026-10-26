@@ -412,6 +412,8 @@ export const zhHantChat = {
   desktop: {
     audioReadFailed: '無法讀取錄製的音訊',
     sessionUnavailable: '工作階段不可用',
+    telegramToDesktopGuidance:
+      '若要在此繼續 Telegram 對話，請在 Sessions 中開啟所屬設定檔並選取該 Telegram 聊天（或使用 /resume 加上工作階段 ID）。/handoff 僅用於訊息平台的主頻道，不會將聊天移至 Desktop。',
     createSessionFailed: '無法建立新工作階段',
     promptFailed: '提示詞傳送失敗',
     providerCredentialRequired: '傳送第一則訊息前請先新增提供方憑證。',

@@ -4535,6 +4535,8 @@ export const zhOverrides = {
   desktop: {
     audioReadFailed: '无法读取录制的音频',
     sessionUnavailable: '会话不可用',
+    telegramToDesktopGuidance:
+      '要在此继续 Telegram 对话，请在 Sessions 中打开所属配置文件并选择该 Telegram 聊天（或使用 /resume 加会话 ID）。/handoff 仅用于消息平台的主频道，不会将聊天移至 Desktop。',
     createSessionFailed: '无法创建新会话',
     promptFailed: '提示词发送失败',
     providerCredentialRequired: '发送第一条消息前请先添加提供方凭据。',

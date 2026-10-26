@@ -4672,6 +4672,8 @@ export const en: Translations = {
   desktop: {
     audioReadFailed: 'Could not read recorded audio',
     sessionUnavailable: 'Session unavailable',
+    telegramToDesktopGuidance:
+      'To continue a Telegram conversation here, open its profile in Sessions and select the Telegram chat (or use /resume with its session ID). /handoff only targets a messaging platform home channel; it does not move a chat to Desktop.',
     createSessionFailed: 'Could not create a new session',
     promptFailed: 'Prompt failed',
     providerCredentialRequired: 'Add a provider credential before sending your first message.',

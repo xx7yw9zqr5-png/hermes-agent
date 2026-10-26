@@ -2273,6 +2273,17 @@ describe('usePromptActions desktop slash pickers', () => {
       }
     })
   })
+
+  it('explains Telegram-to-Desktop continuation without requesting a messaging handoff', async () => {
+    const requestGateway = vi.fn(async (_method: string) => ({}) as never)
+    let handle: HarnessHandle | null = null
+    await actRender(
+      <Harness onReady={h => (handle = h)} refreshSessions={async () => undefined} requestGateway={requestGateway} />
+    )
+    await handle!.submitText('/handoff home')
+    expect(JSON.stringify(handle!.state().messages)).toContain(en.desktop.telegramToDesktopGuidance)
+    expect(requestGateway.mock.calls.some(([method]) => String(method).startsWith('handoff.'))).toBe(false)
+  })
 })
 
 describe('usePromptActions submit / queue drain semantics', () => {
