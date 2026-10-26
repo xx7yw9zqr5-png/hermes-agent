@@ -487,6 +487,46 @@ class TestClassifyApiError:
         result = classify_api_error(e)
         assert result.reason == FailoverReason.overloaded
 
+    @pytest.mark.parametrize("body", [
+        {"error": {"previous_errors": [402]}},
+        {"error": {"previous_errors": [{"status": 429}]}},
+        {"error": {"metadata": {"limit_source": "openrouter_credits"}}},
+        {"metadata": {"limit_source": "openrouter_credits"}},
+    ])
+    def test_503_upstream_quota_advances_fallback(self, body):
+        from agent.turn_recovery import _eager_fallback_status
+        result = classify_api_error(MockAPIError("Service Unavailable", status_code=503, body=body))
+        assert result.reason == FailoverReason.upstream_rate_limit
+        assert result.retryable is True
+        assert result.should_fallback is True
+        assert result.should_compress is False
+        assert "503 with upstream quota/credit error" in _eager_fallback_status(result, True, False)
+
+    @pytest.mark.parametrize("body", [
+        {"error": {"previous_errors": [{"status": 500}]}},
+        {"error": {"attempt": {"status": 402}}},
+        {"error": {"limit_source": "openrouter_tokens"}},
+    ])
+    def test_503_without_upstream_quota_keeps_existing_behavior(self, body):
+        result = classify_api_error(MockAPIError("Service Unavailable", status_code=503, body=body))
+        assert result.reason == FailoverReason.overloaded
+        assert result.should_fallback is False
+
+    def test_503_credit_message_does_not_compress_on_max_tokens(self):
+        error = MockAPIError(
+            '[openrouter/model] [402]: This request requires more credits, or fewer max_tokens',
+            status_code=503,
+        )
+        result = classify_api_error(error)
+        assert result.should_fallback is True
+        assert result.should_compress is False
+
+    def test_other_status_with_upstream_quota_uses_existing_handler(self):
+        error = MockAPIError("Internal Server Error", status_code=500,
+                             body={"error": {"previous_errors": [402]}})
+        result = classify_api_error(error)
+        assert result.reason == FailoverReason.server_error
+        assert result.should_fallback is False
 
     def test_408_request_timeout_is_retryable_timeout(self):
         """HTTP 408 Request Timeout is a transient timing failure the server

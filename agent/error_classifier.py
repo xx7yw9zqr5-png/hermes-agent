@@ -104,6 +104,7 @@ _FREE_TIER_REFUSAL_PATTERNS = ("model_not_supported_on_free_tier", "not availabl
 _BILLING_PATTERNS = (
     "insufficient credits", "insufficient_quota", "insufficient balance", "credit balance",
     "credits exhausted", "credits have been exhausted", "requires available credits",
+    "requires more credits", "requires additional credits",
     "account balance is too low", "no usable credits", "top up your credits", "payment required",
     "billing hard limit", "exceeded your current quota", "account is deactivated", "plan does not include",
     "out of extra usage", "out of funds", "run out of funds", "balance_depleted",
@@ -112,7 +113,7 @@ _BILLING_PATTERNS = (
     "budget limit exceeded",
     *_FREE_TIER_REFUSAL_PATTERNS,
     # LiteLLM proxies word a hard cap as "hard billing limit" (structured twin:
-    # ``terminal_quota_exhausted`` in _BILLING_ERROR_CODES). "terminal billing
+    # "terminal_quota_exhausted" in _BILLING_ERROR_CODES). "terminal billing
     # limit" free text is NOT matched: substring rules can't negate the
     # "non-terminal billing limit" wording, and the structured code covers it.
     "hard billing limit",
@@ -1134,6 +1135,32 @@ def _status_5xx(c: _Ctx) -> Verdict:
     return _first_match(c.msg, _OVERFLOW_AS_5XX_RULES) or _V_SERVER_ERROR
 
 
+def _status_503(c: _Ctx) -> Verdict:
+    # A proxy may report quota/credit exhaustion as 503 while retaining upstream evidence.
+    error = _error_obj(c.body)
+    holders = (c.body, c.body.get("metadata") if isinstance(c.body, dict) else None,
+               error, error.get("metadata"))
+    for holder in holders:
+        if not isinstance(holder, dict):
+            continue
+        source = holder.get("limit_source")
+        if isinstance(source, str) and source.lower().endswith("_credits"):
+            return _v(_R.upstream_rate_limit, should_fallback=True,
+                      error_context={"upstream_quota_503": True})
+        previous = holder.get("previous_errors")
+        if isinstance(previous, list):
+            for entry in previous:
+                status = entry.get("status", entry.get("status_code")) if isinstance(entry, dict) else entry
+                if status in (402, 429, "402", "429"):
+                    return _v(_R.upstream_rate_limit, should_fallback=True,
+                              error_context={"upstream_quota_503": True})
+    # Older relays only preserve the upstream status and credit text in the message.
+    if re.search(r"\[\s*(?:402|429)\s*\]", c.msg) and "requires more credits" in c.msg:
+        return _v(_R.upstream_rate_limit, should_fallback=True,
+                  error_context={"upstream_quota_503": True})
+    return _first_match(c.msg, _OVERFLOW_AS_5XX_RULES) or _V_OVERLOADED
+
+
 def _is_nous_route(c: _Ctx) -> bool:
     """The usage-window 402 code is Nous's: any other upstream sending it keeps main's text rules."""
     if (c.provider or "").strip().lower() == "nous":
@@ -1301,7 +1328,7 @@ _STATUS_HANDLERS: dict[int, Callable[[_Ctx], Verdict]] = {
     403: _status_403, 404: _status_404, 408: lambda c: _V_TIMEOUT, 413: lambda c: _V_PAYLOAD_TOO_LARGE,
     422: lambda c: _classify_image_tool_422(c),
     429: _status_429, 500: _status_5xx, 502: _status_5xx,
-    503: lambda c: _first_match(c.msg, _OVERFLOW_AS_5XX_RULES) or _V_OVERLOADED,
+    503: _status_503,
     529: lambda c: _first_match(c.msg, _OVERFLOW_AS_5XX_RULES) or _V_OVERLOADED,
 }
 
