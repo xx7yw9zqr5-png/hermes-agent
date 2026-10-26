@@ -60,6 +60,7 @@ async def test_the_stored_feed_lists_messaging_and_cron_sessions_and_hides_inter
 
     authority, db = await _owner(tmp_path, monkeypatch)
     _messaging_row(db, 'tg-chat', '111')
+    _messaging_row(db, 'tg-second-chat', '113')
     _messaging_row(db, 'tg-other-profile', '112', profile_name='other')
     cron_run = await _finished_cron_run(authority, db, tmp_path)
     for sid, source in [('worker', 'kanban'), ('integration', 'tool'), ('once', 'oneshot')]:
@@ -74,12 +75,22 @@ async def test_the_stored_feed_lists_messaging_and_cron_sessions_and_hides_inter
     listed = await native.dispatch({'id': 1, 'method': 'session.list', 'params': {'scope': 'stored'}})
     assert 'result' in listed, listed
     ids = {row['id'] for row in listed['result']['sessions']}
-    assert {'tg-chat', cron_run} <= ids
+    assert {'tg-chat', 'tg-second-chat', cron_run} <= ids
     assert not ids & {'worker', 'integration', 'once', 'tg-other-profile'}
 
     resumed = await native.dispatch({'id': 2, 'method': 'session.resume', 'params': {'session_id': 'tg-chat'}})
     assert 'result' in resumed, resumed
     assert [m['content'] for m in resumed['result']['messages']] == ['tg-chat question', 'tg-chat answer']
+    other_chat = await native.dispatch({'id': 3, 'method': 'session.resume',
+                                        'params': {'session_id': 'tg-second-chat'}})
+    assert [m['content'] for m in other_chat['result']['messages']] == [
+        'tg-second-chat question', 'tg-second-chat answer']
+    foreign = await native.dispatch({'id': 4, 'method': 'session.resume',
+                                     'params': {'session_id': 'tg-other-profile'}})
+    assert 'error' in foreign, foreign
+    assert 'result' not in foreign
+    assert 'tg-other-profile question' not in str(foreign)
+    assert 'tg-other-profile answer' not in str(foreign)
 
 
 @pytest.mark.asyncio

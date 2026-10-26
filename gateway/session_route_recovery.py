@@ -97,6 +97,9 @@ def _mount_plan(authority, sid):
     platform = _messaging_platform(row['source']) if route else None
     if platform is None or authority.logical_owner(sid) != sid:
         return None  # a compression continuation: its lineage root is the mount (session.resume maps it)
+    own_profile = authority.db._own_profile_name() or 'default'
+    if row is not None and row.get('profile_name') not in (None, '', own_profile):
+        return None
     store = authority.runner.session_store
     registry = getattr(authority.runner, 'session_authorities', None)
     profile = store._named_profile_for_key(route)

@@ -389,6 +389,8 @@ export const arChat = {
   desktop: {
     audioReadFailed: 'فشلت قراءة الصوت',
     sessionUnavailable: 'الجلسة غير متاحة',
+    telegramToDesktopGuidance:
+      'لمتابعة محادثة Telegram هنا، افتح ملفها الشخصي في Sessions واختر دردشة Telegram (أو استخدم /resume مع معرّف الجلسة). يستهدف /handoff القناة الرئيسية لمنصة مراسلة فقط؛ ولا ينقل الدردشة إلى Desktop.',
     createSessionFailed: 'فشل إنشاء الجلسة',
     promptFailed: 'فشل إرسال الرسالة',
     providerCredentialRequired: 'مطلوب اعتماد المزود',

@@ -4121,6 +4121,7 @@ catalog: CatalogTranslations
   desktop: {
     audioReadFailed: string
     sessionUnavailable: string
+    telegramToDesktopGuidance: string
     createSessionFailed: string
     promptFailed: string
     providerCredentialRequired: string

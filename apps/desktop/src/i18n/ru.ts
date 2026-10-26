@@ -3717,6 +3717,8 @@ export const ruOverrides = {
   desktop: {
     audioReadFailed: 'Не удалось прочитать записанное аудио',
     sessionUnavailable: 'Сеанс недоступен',
+    telegramToDesktopGuidance:
+      'Чтобы продолжить здесь беседу из Telegram, откройте её профиль в Sessions и выберите чат Telegram (или используйте /resume с ID сеанса). /handoff предназначен только для основного канала мессенджера; он не переносит чат в Desktop.',
     createSessionFailed: 'Не удалось создать новый сеанс',
     promptFailed: 'Промпт не удался',
     providerCredentialRequired: 'Добавьте учётные данные провайдера перед отправкой первого сообщения.',

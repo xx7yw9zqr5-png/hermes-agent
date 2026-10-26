@@ -5339,6 +5339,8 @@ export const deOverrides = {
   desktop: {
     audioReadFailed: 'Aufgenommenes Audio konnte nicht gelesen werden',
     sessionUnavailable: 'Session nicht verfügbar',
+    telegramToDesktopGuidance:
+      'Um eine Telegram-Unterhaltung hier fortzusetzen, öffne ihr Profil unter Sessions und wähle den Telegram-Chat aus (oder nutze /resume mit der Sitzungs-ID). /handoff zielt nur auf den Hauptkanal einer Messaging-Plattform; es verschiebt keinen Chat zu Desktop.',
     createSessionFailed: 'Neue Session konnte nicht erstellt werden',
     promptFailed: 'Prompt fehlgeschlagen',
     providerCredentialRequired:

@@ -263,6 +263,15 @@ Session IDs follow the format `YYYYMMDD_HHMMSS_<hex>` — CLI/TUI sessions use a
 
 ## Cross-Platform Handoff
 
+**Telegram → Desktop local:** no `/handoff home` is needed (`home` is not a messaging
+platform). In Desktop, select the profile that owns the Telegram chat, then open that
+conversation from Sessions (or `/resume <session-id>`). The shared gateway attaches to
+the existing session and displays its transcript without copying it into a new chat;
+later messages on either surface continue that same conversation. An older Telegram
+conversation replaced by `/new` can still be opened for reading, but cannot accept
+new turns. A remote Desktop connection without the local profile's authority may
+not adopt a stored messaging conversation.
+
 Use `/handoff <platform>` from a CLI session to transfer the live conversation to a messaging platform's home channel. The agent picks up exactly where the CLI left off — same session id, full role-aware transcript, tool calls and all.
 
 ```bash

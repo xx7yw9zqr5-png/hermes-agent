@@ -5324,6 +5324,8 @@ export const esOverrides = {
   desktop: {
     audioReadFailed: 'No se pudo leer el audio grabado',
     sessionUnavailable: 'Sesión no disponible',
+    telegramToDesktopGuidance:
+      'Para continuar aquí una conversación de Telegram, abre su perfil en Sesiones y selecciona ese chat (o usa /resume con su ID de sesión). /handoff solo se dirige al canal principal de una plataforma de mensajería; no traslada un chat a Desktop.',
     createSessionFailed: 'No se pudo crear una sesión nueva',
     promptFailed: 'Falló el prompt',
     providerCredentialRequired: 'Añade una credencial de proveedor antes de enviar tu primer mensaje.',

@@ -3557,6 +3557,8 @@ export const jaOverrides = {
   desktop: {
     audioReadFailed: '録音した音声を読み取れませんでした',
     sessionUnavailable: 'セッションが利用できません',
+    telegramToDesktopGuidance:
+      'Telegram の会話をここで続けるには、Sessions で該当するプロファイルを開き、Telegram のチャットを選択してください（またはセッション ID で /resume を使用）。/handoff はメッセージングプラットフォームのホームチャネル宛てであり、チャットを Desktop に移動しません。',
     createSessionFailed: '新しいセッションを作成できませんでした',
     promptFailed: 'プロンプトに失敗しました',
     providerCredentialRequired: '最初のメッセージを送信する前にプロバイダー認証情報を追加してください。',

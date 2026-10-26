@@ -1137,6 +1137,13 @@ export function useSlashCommand(deps: SlashCommandDeps) {
 
           const sid = sessionHint || activeSessionIdRef.current
 
+          if (platform.toLowerCase() === 'home') {
+            const guidance = copy.telegramToDesktopGuidance
+            if (sid) appendSessionTextMessage(sid, 'system', recordInput ? slashStatusText(command, guidance) : guidance)
+            else notify({ kind: 'success', message: guidance })
+            return
+          }
+
           if (!sid) {
             notify({ kind: 'error', title: copy.sessionUnavailable, message: copy.createSessionFailed })
 
